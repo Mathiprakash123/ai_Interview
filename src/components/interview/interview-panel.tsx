@@ -131,19 +131,23 @@ export function InterviewPanel() {
 
   const handleEndSession = async () => {
     if (user && currentExchanges.length > 0) {
-      const sessionToSave = {
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-          category: selectedCategory,
-          difficulty: selectedDifficulty,
-          exchanges: currentExchanges,
-      };
-      try {
-          await addDoc(collection(db, 'interviewSessions'), sessionToSave);
-          toast({ title: "Session Saved!", description: "Your interview has been saved to your history." });
-      } catch (e) {
-          console.error("Could not save to Firestore", e);
-          toast({ title: "Error Saving Session", description: "Your interview session could not be saved.", variant: "destructive" });
+      if (db) {
+        const sessionToSave = {
+            userId: user.uid,
+            createdAt: serverTimestamp(),
+            category: selectedCategory,
+            difficulty: selectedDifficulty,
+            exchanges: currentExchanges,
+        };
+        try {
+            await addDoc(collection(db, 'interviewSessions'), sessionToSave);
+            toast({ title: "Session Saved!", description: "Your interview has been saved to your history." });
+        } catch (e) {
+            console.error("Could not save to Firestore", e);
+            toast({ title: "Error Saving Session", description: "Your interview session could not be saved.", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Session Not Saved", description: "Firebase is not configured, so your session was not saved.", variant: "destructive" });
       }
     }
   

@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { User as FirebaseUser, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, isFirebaseConfigured } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 interface User {
@@ -28,6 +28,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
+    // If firebase is not configured, we just set loading to false and don't try to authenticate.
+    if (!isFirebaseConfigured || !auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         setUser({
@@ -44,6 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    if (!isFirebaseConfigured || !auth) {
+      const msg = "Firebase is not configured. Please add your credentials to the .env file.";
+      toast({ title: "Login Failed", description: msg, variant: "destructive" });
+      throw new Error(msg);
+    }
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/');
@@ -55,10 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (email: string, password: string) => {
+    if (!isFirebaseConfigured || !auth) {
+      const msg = "Firebase is not configured. Please add your credentials to the .env file.";
+      toast({ title: "Sign Up Failed", description: msg, variant: "destructive" });
+      throw new Error(msg);
+    }
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       router.push('/');
-    } catch (error: any) {
+    } catch (error: any)
+    {
       console.error("Signup error:", error.message);
       toast({ title: "Sign Up Failed", description: error.code, variant: "destructive" });
       throw error;
@@ -66,6 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // If firebase is not configured, just redirect to login
+    if (!isFirebaseConfigured || !auth) {
+      router.push('/login');
+      return;
+    }
+
     try {
       await signOut(auth);
       router.push('/login');

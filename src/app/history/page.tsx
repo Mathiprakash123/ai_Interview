@@ -32,7 +32,7 @@ export default function HistoryPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (user) {
+    if (user && db) {
       const fetchHistory = async () => {
         setIsLoading(true);
         try {
@@ -61,11 +61,13 @@ export default function HistoryPage() {
         }
       };
       fetchHistory();
+    } else {
+      setIsLoading(false);
     }
   }, [user, toast]);
 
   const clearHistory = async () => {
-    if (user) {
+    if (user && db) {
       setIsLoading(true);
       try {
         const q = query(collection(db, "interviewSessions"), where("userId", "==", user.uid));
