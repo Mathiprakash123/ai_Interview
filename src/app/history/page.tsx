@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function HistoryPage() {
   const [history, setHistory] = useState<InterviewSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClearing, setIsClearing] = useState(false);
 
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -61,14 +62,14 @@ export default function HistoryPage() {
         }
       };
       fetchHistory();
-    } else {
+    } else if (!authLoading) {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, authLoading, toast]);
 
   const clearHistory = async () => {
     if (user && db) {
-      setIsLoading(true);
+      setIsClearing(true);
       try {
         const q = query(collection(db, "interviewSessions"), where("userId", "==", user.uid));
         const querySnapshot = await getDocs(q);
@@ -83,12 +84,24 @@ export default function HistoryPage() {
         console.error("Could not clear history from Firestore", e);
         toast({ title: "Error", description: "Could not clear history.", variant: "destructive" });
       } finally {
-        setIsLoading(false);
+        setIsClearing(false);
       }
     }
   };
 
-  if (authLoading || (!user && !isLoading)) {
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    // This state is temporary while redirecting. Show a loader.
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
@@ -112,18 +125,14 @@ export default function HistoryPage() {
           </div>
           
           {history.length > 0 && (
-            <Button variant="destructive" onClick={clearHistory} disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+            <Button variant="destructive" onClick={clearHistory} disabled={isClearing}>
+              {isClearing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
               Clear History
             </Button>
           )}
         </div>
 
-        {isLoading ? (
-          <div className="flex-1 flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : history.length === 0 ? (
+        {history.length === 0 ? (
           <Card className="text-center py-16">
             <CardHeader>
               <CardTitle className="font-headline">No History Found</CardTitle>
