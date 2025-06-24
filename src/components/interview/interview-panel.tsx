@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -32,6 +33,7 @@ export function InterviewPanel() {
   const [transcribedText, setTranscribedText] = useState('');
   const [feedback, setFeedback] = useState<AnalyzeAnswerQualityOutput | null>(null);
   const [currentExchanges, setCurrentExchanges] = useState<InterviewExchange[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   
   const { isRecording, startRecording, stopRecording, audioBlob } = useRecorder();
   const { toast } = useToast();
@@ -130,32 +132,44 @@ export function InterviewPanel() {
   };
 
   const handleEndSession = async () => {
-    if (user && currentExchanges.length > 0) {
-      if (db) {
-        const sessionToSave = {
-            userId: user.uid,
-            createdAt: serverTimestamp(),
-            category: selectedCategory,
-            difficulty: selectedDifficulty,
-            exchanges: currentExchanges,
-        };
-        try {
+    if (!user || currentExchanges.length === 0) {
+        setInterviewState('setup');
+        setCurrentQuestion(null);
+        setTranscribedText('');
+        setFeedback(null);
+        setCurrentExchanges([]);
+        return;
+    }
+
+    if (isSaving) return;
+    setIsSaving(true);
+    
+    try {
+        if (db) {
+            const sessionToSave = {
+                userId: user.uid,
+                createdAt: serverTimestamp(),
+                category: selectedCategory,
+                difficulty: selectedDifficulty,
+                exchanges: currentExchanges,
+            };
             await addDoc(collection(db, 'interviewSessions'), sessionToSave);
             toast({ title: "Session Saved!", description: "Your interview has been saved to your history." });
-        } catch (e) {
-            console.error("Could not save to Firestore", e);
-            toast({ title: "Error Saving Session", description: "Your interview session could not be saved.", variant: "destructive" });
+            
+            setInterviewState('setup');
+            setCurrentQuestion(null);
+            setTranscribedText('');
+            setFeedback(null);
+            setCurrentExchanges([]);
+        } else {
+            toast({ title: "Session Not Saved", description: "Firebase is not configured, so this session was not saved.", variant: "destructive" });
         }
-      } else {
-        toast({ title: "Session Not Saved", description: "Firebase is not configured, so your session was not saved.", variant: "destructive" });
-      }
+    } catch (e) {
+        console.error("Could not save to Firestore", e);
+        toast({ title: "Error Saving Session", description: "Your interview session could not be saved.", variant: "destructive" });
+    } finally {
+        setIsSaving(false);
     }
-  
-    setInterviewState('setup');
-    setCurrentQuestion(null);
-    setTranscribedText('');
-    setFeedback(null);
-    setCurrentExchanges([]);
   };
 
   const renderSetup = () => (
@@ -260,11 +274,11 @@ export function InterviewPanel() {
                     </CardContent>
                 </Card>
                 <div className="flex justify-center gap-4">
-                    <Button onClick={generateNewQuestion} disabled={interviewState === 'generating'}>
+                    <Button onClick={generateNewQuestion} disabled={interviewState === 'generating' || isSaving}>
                         <RefreshCw className="mr-2 h-4 w-4" /> Next Question
                     </Button>
-                    <Button variant="outline" onClick={handleEndSession}>
-                        End Session
+                    <Button variant="outline" onClick={handleEndSession} disabled={isSaving}>
+                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'End Session'}
                     </Button>
                 </div>
                 </>

@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<InterviewSession[]>([]);
@@ -33,8 +34,13 @@ export default function HistoryPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (user && db) {
+    if (user) {
       const fetchHistory = async () => {
+        if (!db) {
+            setIsLoading(false);
+            toast({ title: "Error", description: "Could not connect to the database.", variant: "destructive" });
+            return;
+        }
         setIsLoading(true);
         try {
           const q = query(
@@ -45,7 +51,6 @@ export default function HistoryPage() {
           const querySnapshot = await getDocs(q);
           const sessions = querySnapshot.docs.map(doc => {
             const data = doc.data();
-            // Handle cases where createdAt might be null or not a Firestore Timestamp
             const timestamp = data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Date.now();
             return {
               id: doc.id,
@@ -64,10 +69,8 @@ export default function HistoryPage() {
         }
       };
       fetchHistory();
-    } else if (!authLoading) {
-      setIsLoading(false);
     }
-  }, [user, authLoading, toast]);
+  }, [user, toast]);
 
   const clearHistory = async () => {
     if (user && db) {
@@ -91,24 +94,37 @@ export default function HistoryPage() {
     }
   };
 
-  if (authLoading || isLoading) {
+  if (authLoading) {
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <p>Loading...</p>
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="ml-4">Authenticating...</p>
         </div>
       </div>
     );
   }
   
   if (!user) {
-    // This state is temporary while redirecting. Show a loader.
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <p>Redirecting...</p>
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="ml-4">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="ml-4">Loading history...</p>
         </div>
       </div>
     );
@@ -167,7 +183,6 @@ export default function HistoryPage() {
                   <AccordionContent className="p-6 pt-0">
                     <Accordion type="single" collapsible className="w-full space-y-2">
                       {(session.exchanges || []).map((exchange, index) => {
-                        // Handle backward compatibility for question format
                         const questionText = typeof exchange.question === 'string'
                           ? exchange.question
                           : (exchange.question as any)?.text;
