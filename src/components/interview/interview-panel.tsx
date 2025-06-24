@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { InterviewQuestion, InterviewSession } from '@/lib/types';
+import type { InterviewQuestion, InterviewExchange, InterviewSession } from '@/lib/types';
 import { generateQuestion } from '@/ai/flows/generate-question';
 import { analyzeAnswerQuality, type AnalyzeAnswerQualityOutput } from '@/ai/flows/analyze-answer-quality';
 import { transcribeAnswer } from '@/ai/flows/transcribe-answer';
@@ -28,6 +28,7 @@ export function InterviewPanel() {
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
   const [transcribedText, setTranscribedText] = useState('');
   const [feedback, setFeedback] = useState<AnalyzeAnswerQualityOutput | null>(null);
+  const [currentExchanges, setCurrentExchanges] = useState<InterviewExchange[]>([]);
   
   const { isRecording, startRecording, stopRecording, audioBlob } = useRecorder();
   const { toast } = useToast();
@@ -40,6 +41,7 @@ export function InterviewPanel() {
 
   const handleStartInterview = async () => {
     setInterviewState('generating');
+    setCurrentExchanges([]);
     await generateNewQuestion();
   };
 
@@ -105,8 +107,15 @@ export function InterviewPanel() {
     try {
       const result = await analyzeAnswerQuality({ question: currentQuestion.text, answer });
       setFeedback(result);
+      
+      const newExchange: InterviewExchange = {
+        question: currentQuestion,
+        answer: answer,
+        feedback: result
+      };
+      setCurrentExchanges(prev => [...prev, newExchange]);
+
       setInterviewState('feedback');
-      saveSessionToHistory(answer, result);
     } catch (error) {
       console.error('Analysis error:', error);
       toast({ title: "Feedback Analysis Failed", description: "Could not analyze your answer.", variant: "destructive" });
@@ -114,30 +123,30 @@ export function InterviewPanel() {
     }
   };
 
-  const saveSessionToHistory = (answer: string, feedback: AnalyzeAnswerQualityOutput) => {
-    if (!currentQuestion) return;
-    const newSession: InterviewSession = {
-      id: new Date().toISOString(),
-      question: currentQuestion,
-      answer,
-      feedback,
-      timestamp: Date.now(),
-    };
-    try {
-        const history = JSON.parse(localStorage.getItem('interviewHistory') || '[]');
-        history.unshift(newSession);
-        localStorage.setItem('interviewHistory', JSON.stringify(history.slice(0, 20))); // Limit history size
-    } catch (e) {
-        console.error("Could not save to localStorage", e)
+  const handleEndSession = () => {
+    if (currentExchanges.length > 0) {
+      const sessionToSave: InterviewSession = {
+          id: new Date().toISOString(),
+          timestamp: Date.now(),
+          category: selectedCategory,
+          difficulty: selectedDifficulty,
+          exchanges: currentExchanges,
+      };
+      try {
+          const history = JSON.parse(localStorage.getItem('interviewHistory') || '[]');
+          history.unshift(sessionToSave);
+          localStorage.setItem('interviewHistory', JSON.stringify(history.slice(0, 20))); // Limit history size
+      } catch (e) {
+          console.error("Could not save to localStorage", e)
+      }
     }
-  };
-
-  const resetInterview = () => {
+  
     setInterviewState('setup');
     setCurrentQuestion(null);
     setAskedQuestions([]);
     setTranscribedText('');
     setFeedback(null);
+    setCurrentExchanges([]);
   };
 
   const renderSetup = () => (
@@ -245,7 +254,7 @@ export function InterviewPanel() {
                     <Button onClick={generateNewQuestion} disabled={interviewState === 'generating'}>
                         <RefreshCw className="mr-2 h-4 w-4" /> Next Question
                     </Button>
-                    <Button variant="outline" onClick={resetInterview}>
+                    <Button variant="outline" onClick={handleEndSession}>
                         End Session
                     </Button>
                 </div>

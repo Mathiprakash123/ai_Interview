@@ -7,10 +7,18 @@ export type InterviewQuestion = {
   text: string;
 };
 
-export type InterviewSession = {
-  id: string;
+// Represents one Q&A exchange
+export type InterviewExchange = {
   question: InterviewQuestion;
   answer: string;
   feedback: AnalyzeAnswerQualityOutput;
+};
+
+// Represents a full interview session
+export type InterviewSession = {
+  id:string;
   timestamp: number;
+  category: InterviewQuestion['category'];
+  difficulty: InterviewQuestion['difficulty'];
+  exchanges: InterviewExchange[];
 };

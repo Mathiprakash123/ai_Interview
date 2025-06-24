@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import type { InterviewSession } from '@/lib/types';
@@ -87,34 +87,47 @@ export default function HistoryPage() {
                   <AccordionTrigger className="p-6 hover:no-underline">
                     <div className="flex justify-between items-center w-full">
                         <div className="text-left">
-                            <h3 className="font-semibold font-headline">{session.question.text}</h3>
+                            <h3 className="font-semibold font-headline">{session.category} Interview</h3>
                             <p className="text-sm text-muted-foreground mt-1">
                                 {formatDistanceToNow(new Date(session.timestamp), { addSuffix: true })}
                             </p>
                         </div>
                         <div className="flex gap-2 mr-4 flex-shrink-0">
-                            <Badge variant="secondary">{session.question.category}</Badge>
-                            <Badge variant="secondary">{session.question.difficulty}</Badge>
+                            <Badge variant="secondary">{session.difficulty}</Badge>
+                            <Badge variant="outline">{session.exchanges.length} Question{session.exchanges.length > 1 ? 's': ''}</Badge>
                         </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="p-6 pt-0">
-                    <div className="space-y-6">
-                      <div>
-                        <h4 className="font-semibold mb-2 font-headline">Your Answer:</h4>
-                        <blockquote className="text-muted-foreground p-4 bg-secondary rounded-md border-l-4 border-primary">{session.answer}</blockquote>
-                      </div>
-                      <Separator />
-                      <div>
-                        <h4 className="font-semibold mb-4 font-headline">AI Feedback:</h4>
-                        <div className="space-y-4 text-muted-foreground">
-                          <p><strong>Clarity:</strong> {session.feedback.clarity}</p>
-                          <p><strong>Conciseness:</strong> {session.feedback.conciseness}</p>
-                          <p><strong>Overall Quality:</strong> {session.feedback.overallQuality}</p>
-                          <p><strong>Suggestions:</strong> {session.feedback.suggestions}</p>
-                        </div>
-                      </div>
-                    </div>
+                    <Accordion type="single" collapsible className="w-full space-y-2">
+                      {session.exchanges.map((exchange, index) => (
+                        <AccordionItem value={`exchange-${session.id}-${index}`} key={`exchange-${session.id}-${index}`} className="border-b-0">
+                          <Card className="bg-secondary/50">
+                            <AccordionTrigger className="p-4 hover:no-underline text-left">
+                              <p className="font-semibold">Q{index + 1}: {exchange.question.text}</p>
+                            </AccordionTrigger>
+                            <AccordionContent className="p-4 pt-0">
+                                <div className="space-y-6">
+                                  <div>
+                                    <h4 className="font-semibold mb-2 font-headline">Your Answer:</h4>
+                                    <blockquote className="text-muted-foreground p-4 bg-background rounded-md border-l-4 border-primary">{exchange.answer}</blockquote>
+                                  </div>
+                                  <Separator />
+                                  <div>
+                                    <h4 className="font-semibold mb-4 font-headline">AI Feedback:</h4>
+                                    <div className="space-y-4 text-muted-foreground">
+                                      <p><strong>Clarity:</strong> {exchange.feedback.clarity}</p>
+                                      <p><strong>Conciseness:</strong> {exchange.feedback.conciseness}</p>
+                                      <p><strong>Overall Quality:</strong> {exchange.feedback.overallQuality}</p>
+                                      <p><strong>Suggestions:</strong> {exchange.feedback.suggestions}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                            </AccordionContent>
+                          </Card>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
                   </AccordionContent>
                 </Card>
               </AccordionItem>
