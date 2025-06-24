@@ -13,6 +13,9 @@ import type { InterviewSession } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ArrowLeft, Trash2, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, orderBy, writeBatch } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<InterviewSession[]>([]);
@@ -20,6 +23,7 @@ export default function HistoryPage() {
 
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -29,37 +33,67 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (user) {
-      try {
-          const storedHistory = JSON.parse(localStorage.getItem(`interviewHistory_${user.email}`) || '[]');
-          setHistory(storedHistory);
-      } catch (e) {
-          console.error("Could not parse history from localStorage", e);
-          setHistory([]);
-      } finally {
-          setIsLoading(false);
-      }
-    }
-  }, [user]);
-
-  const clearHistory = () => {
-    if (user) {
+      const fetchHistory = async () => {
+        setIsLoading(true);
         try {
-            localStorage.removeItem(`interviewHistory_${user.email}`);
-            setHistory([]);
+          const q = query(
+            collection(db, "interviewSessions"),
+            where("userId", "==", user.uid),
+            orderBy("createdAt", "desc")
+          );
+          const querySnapshot = await getDocs(q);
+          const sessions = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              timestamp: data.createdAt.toDate().getTime(),
+              category: data.category,
+              difficulty: data.difficulty,
+              exchanges: data.exchanges || [],
+            } as InterviewSession;
+          });
+          setHistory(sessions);
         } catch (e) {
-            console.error("Could not clear history from localStorage", e);
+          console.error("Could not fetch history from Firestore", e);
+          toast({ title: "Error", description: "Could not load interview history.", variant: "destructive" });
+        } finally {
+          setIsLoading(false);
         }
+      };
+      fetchHistory();
+    }
+  }, [user, toast]);
+
+  const clearHistory = async () => {
+    if (user) {
+      setIsLoading(true);
+      try {
+        const q = query(collection(db, "interviewSessions"), where("userId", "==", user.uid));
+        const querySnapshot = await getDocs(q);
+        const batch = writeBatch(db);
+        querySnapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        setHistory([]);
+        toast({ title: "Success", description: "Your interview history has been cleared." });
+      } catch (e) {
+        console.error("Could not clear history from Firestore", e);
+        toast({ title: "Error", description: "Could not clear history.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  if (authLoading || !user) {
+  if (authLoading || (!user && !isLoading)) {
     return (
-        <div className="flex flex-col min-h-screen">
-            <Header />
-            <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
         </div>
+      </div>
     );
   }
   
@@ -68,36 +102,37 @@ export default function HistoryPage() {
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-                <Button variant="outline" size="icon" asChild>
-                    <Link href="/"><ArrowLeft/></Link>
-                </Button>
-                <h1 className="text-3xl font-bold font-headline">Interview History</h1>
-            </div>
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" asChild>
+              <Link href="/"><ArrowLeft/></Link>
+            </Button>
+            <h1 className="text-3xl font-bold font-headline">Interview History</h1>
+          </div>
           
           {history.length > 0 && (
-            <Button variant="destructive" onClick={clearHistory}>
-              <Trash2 className="mr-2 h-4 w-4" /> Clear History
+            <Button variant="destructive" onClick={clearHistory} disabled={isLoading}>
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Clear History
             </Button>
           )}
         </div>
 
-        {history.length === 0 && !isLoading ? (
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : history.length === 0 ? (
           <Card className="text-center py-16">
             <CardHeader>
-                <CardTitle className="font-headline">No History Found</CardTitle>
-                <CardDescription>You haven't completed any interviews yet. Go back to the main page to start one!</CardDescription>
+              <CardTitle className="font-headline">No History Found</CardTitle>
+              <CardDescription>You haven't completed any interviews yet. Go back to the main page to start one!</CardDescription>
             </CardHeader>
             <CardContent>
-                <Button asChild>
-                    <Link href="/">Start an Interview</Link>
-                </Button>
+              <Button asChild>
+                <Link href="/">Start an Interview</Link>
+              </Button>
             </CardContent>
           </Card>
-        ) : isLoading ? (
-             <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
         ) : (
           <Accordion type="single" collapsible className="w-full space-y-4">
             {history.map((session) => (
@@ -105,16 +140,16 @@ export default function HistoryPage() {
                 <Card className="shadow-sm hover:shadow-md transition-shadow">
                   <AccordionTrigger className="p-6 hover:no-underline">
                     <div className="flex justify-between items-center w-full">
-                        <div className="text-left">
-                            <h3 className="font-semibold font-headline">{session.category} Interview</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {formatDistanceToNow(new Date(session.timestamp), { addSuffix: true })}
-                            </p>
-                        </div>
-                        <div className="flex gap-2 mr-4 flex-shrink-0">
-                            <Badge variant="secondary">{session.difficulty}</Badge>
-                            <Badge variant="outline">{(session.exchanges || []).length} Question{(session.exchanges || []).length !== 1 ? 's' : ''}</Badge>
-                        </div>
+                      <div className="text-left">
+                        <h3 className="font-semibold font-headline">{session.category} Interview</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(session.timestamp), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 mr-4 flex-shrink-0">
+                        <Badge variant="secondary">{session.difficulty}</Badge>
+                        <Badge variant="outline">{(session.exchanges || []).length} Question{(session.exchanges || []).length !== 1 ? 's' : ''}</Badge>
+                      </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="p-6 pt-0">

@@ -2,15 +2,19 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { User as FirebaseUser, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
-  email: string;
+  uid: string;
+  email: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string) => void;
-  signup: (email: string) => void;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -21,40 +25,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+        });
+      } else {
+        setUser(null);
       }
-    } catch (e) {
-      console.error("Failed to parse user from localStorage", e);
-      localStorage.removeItem('user');
-    } finally {
-        setLoading(false);
-    }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = (email: string) => {
-    const newUser = { email };
-    localStorage.setItem('user', JSON.stringify(newUser));
-    setUser(newUser);
-    router.push('/');
+  const login = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/');
+    } catch (error: any) {
+      console.error("Login error:", error.message);
+      toast({ title: "Login Failed", description: error.code, variant: "destructive" });
+      throw error;
+    }
   };
 
-  const signup = (email: string) => {
-    // In a real app, you'd check if the user exists. Here we just log them in.
-    const newUser = { email };
-    localStorage.setItem('user', JSON.stringify(newUser));
-    setUser(newUser);
-    router.push('/');
+  const signup = async (email: string, password: string) => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      router.push('/');
+    } catch (error: any) {
+      console.error("Signup error:", error.message);
+      toast({ title: "Sign Up Failed", description: error.code, variant: "destructive" });
+      throw error;
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    router.push('/login');
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error: any) {
+       console.error("Logout error:", error.message);
+       toast({ title: "Logout Failed", description: error.code, variant: "destructive" });
+    }
   };
 
   return (

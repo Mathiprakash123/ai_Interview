@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { InterviewQuestion, InterviewExchange, InterviewSession } from '@/lib/types';
+import type { InterviewQuestion, InterviewExchange } from '@/lib/types';
 import { generateQuestion } from '@/ai/flows/generate-question';
 import { analyzeAnswerQuality, type AnalyzeAnswerQualityOutput } from '@/ai/flows/analyze-answer-quality';
 import { transcribeAnswer } from '@/ai/flows/transcribe-answer';
@@ -14,6 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Loader2, Mic, StopCircle, RefreshCw, Star, BarChart, CheckCircle, Lightbulb, Bot } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
 
 type InterviewState = 'setup' | 'generating' | 'ready' | 'recording' | 'transcribing' | 'analyzing' | 'feedback';
 
@@ -126,21 +129,21 @@ export function InterviewPanel() {
     }
   };
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     if (user && currentExchanges.length > 0) {
-      const sessionToSave: InterviewSession = {
-          id: new Date().toISOString(),
-          timestamp: Date.now(),
+      const sessionToSave = {
+          userId: user.uid,
+          createdAt: serverTimestamp(),
           category: selectedCategory,
           difficulty: selectedDifficulty,
           exchanges: currentExchanges,
       };
       try {
-          const history = JSON.parse(localStorage.getItem(`interviewHistory_${user.email}`) || '[]');
-          history.unshift(sessionToSave);
-          localStorage.setItem(`interviewHistory_${user.email}`, JSON.stringify(history.slice(0, 20))); // Limit history size
+          await addDoc(collection(db, 'interviewSessions'), sessionToSave);
+          toast({ title: "Session Saved!", description: "Your interview has been saved to your history." });
       } catch (e) {
-          console.error("Could not save to localStorage", e)
+          console.error("Could not save to Firestore", e);
+          toast({ title: "Error Saving Session", description: "Your interview session could not be saved.", variant: "destructive" });
       }
     }
   
