@@ -25,7 +25,6 @@ export function InterviewPanel() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<InterviewQuestion['difficulty']>(questionDifficulties[0]);
   
   const [currentQuestion, setCurrentQuestion] = useState<InterviewQuestion | null>(null);
-  const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
   const [transcribedText, setTranscribedText] = useState('');
   const [feedback, setFeedback] = useState<AnalyzeAnswerQualityOutput | null>(null);
   const [currentExchanges, setCurrentExchanges] = useState<InterviewExchange[]>([]);
@@ -51,7 +50,10 @@ export function InterviewPanel() {
       const { question: questionText } = await generateQuestion({
         category: selectedCategory,
         difficulty: selectedDifficulty,
-        previousQuestions: askedQuestions,
+        previousExchanges: currentExchanges.map((exchange) => ({
+          question: exchange.question.text,
+          answer: exchange.answer,
+        })),
       });
 
       const newQuestion: InterviewQuestion = {
@@ -62,7 +64,6 @@ export function InterviewPanel() {
       };
 
       setCurrentQuestion(newQuestion);
-      setAskedQuestions(prev => [...prev, questionText]);
       setInterviewState('ready');
       setTranscribedText('');
       setFeedback(null);
@@ -143,7 +144,6 @@ export function InterviewPanel() {
   
     setInterviewState('setup');
     setCurrentQuestion(null);
-    setAskedQuestions([]);
     setTranscribedText('');
     setFeedback(null);
     setCurrentExchanges([]);
