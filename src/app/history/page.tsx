@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/auth-context';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,45 +11,58 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import type { InterviewSession } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<InterviewSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
   useEffect(() => {
-    try {
-        const storedHistory = JSON.parse(localStorage.getItem('interviewHistory') || '[]');
-        setHistory(storedHistory);
-    } catch (e) {
-        console.error("Could not parse history from localStorage", e);
-        setHistory([]);
-    } finally {
-        setIsLoading(false);
+    if (!authLoading && !user) {
+      router.replace('/login');
     }
-  }, []);
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (user) {
+      try {
+          const storedHistory = JSON.parse(localStorage.getItem(`interviewHistory_${user.email}`) || '[]');
+          setHistory(storedHistory);
+      } catch (e) {
+          console.error("Could not parse history from localStorage", e);
+          setHistory([]);
+      } finally {
+          setIsLoading(false);
+      }
+    }
+  }, [user]);
 
   const clearHistory = () => {
-    try {
-        localStorage.removeItem('interviewHistory');
-        setHistory([]);
-    } catch (e) {
-        console.error("Could not clear history from localStorage", e);
+    if (user) {
+        try {
+            localStorage.removeItem(`interviewHistory_${user.email}`);
+            setHistory([]);
+        } catch (e) {
+            console.error("Could not clear history from localStorage", e);
+        }
     }
   };
 
-  if (isLoading) {
+  if (authLoading || !user) {
     return (
         <div className="flex flex-col min-h-screen">
             <Header />
             <div className="flex-1 flex items-center justify-center">
-                <p>Loading history...</p>
+                <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         </div>
     );
   }
-
+  
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -67,7 +82,7 @@ export default function HistoryPage() {
           )}
         </div>
 
-        {history.length === 0 ? (
+        {history.length === 0 && !isLoading ? (
           <Card className="text-center py-16">
             <CardHeader>
                 <CardTitle className="font-headline">No History Found</CardTitle>
@@ -79,6 +94,10 @@ export default function HistoryPage() {
                 </Button>
             </CardContent>
           </Card>
+        ) : isLoading ? (
+             <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
         ) : (
           <Accordion type="single" collapsible className="w-full space-y-4">
             {history.map((session) => (

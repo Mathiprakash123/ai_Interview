@@ -7,6 +7,7 @@ import { analyzeAnswerQuality, type AnalyzeAnswerQualityOutput } from '@/ai/flow
 import { transcribeAnswer } from '@/ai/flows/transcribe-answer';
 import { useRecorder } from '@/hooks/use-recorder';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,6 +32,7 @@ export function InterviewPanel() {
   
   const { isRecording, startRecording, stopRecording, audioBlob } = useRecorder();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (audioBlob) {
@@ -125,7 +127,7 @@ export function InterviewPanel() {
   };
 
   const handleEndSession = () => {
-    if (currentExchanges.length > 0) {
+    if (user && currentExchanges.length > 0) {
       const sessionToSave: InterviewSession = {
           id: new Date().toISOString(),
           timestamp: Date.now(),
@@ -134,9 +136,9 @@ export function InterviewPanel() {
           exchanges: currentExchanges,
       };
       try {
-          const history = JSON.parse(localStorage.getItem('interviewHistory') || '[]');
+          const history = JSON.parse(localStorage.getItem(`interviewHistory_${user.email}`) || '[]');
           history.unshift(sessionToSave);
-          localStorage.setItem('interviewHistory', JSON.stringify(history.slice(0, 20))); // Limit history size
+          localStorage.setItem(`interviewHistory_${user.email}`, JSON.stringify(history.slice(0, 20))); // Limit history size
       } catch (e) {
           console.error("Could not save to localStorage", e)
       }
