@@ -94,13 +94,13 @@ export default function HistoryPage() {
                         </div>
                         <div className="flex gap-2 mr-4 flex-shrink-0">
                             <Badge variant="secondary">{session.difficulty}</Badge>
-                            <Badge variant="outline">{session.exchanges.length} Question{session.exchanges.length > 1 ? 's': ''}</Badge>
+                            <Badge variant="outline">{(session.exchanges || []).length} Question{(session.exchanges || []).length !== 1 ? 's' : ''}</Badge>
                         </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="p-6 pt-0">
                     <Accordion type="single" collapsible className="w-full space-y-2">
-                      {session.exchanges.map((exchange, index) => (
+                      {(session.exchanges || []).map((exchange, index) => (
                         <AccordionItem value={`exchange-${session.id}-${index}`} key={`exchange-${session.id}-${index}`} className="border-b-0">
                           <Card className="bg-secondary/50">
                             <AccordionTrigger className="p-4 hover:no-underline text-left">
