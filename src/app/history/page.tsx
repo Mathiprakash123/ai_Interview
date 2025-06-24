@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -44,9 +45,11 @@ export default function HistoryPage() {
           const querySnapshot = await getDocs(q);
           const sessions = querySnapshot.docs.map(doc => {
             const data = doc.data();
+            // Handle cases where createdAt might be null or not a Firestore Timestamp
+            const timestamp = data.createdAt?.toDate ? data.createdAt.toDate().getTime() : Date.now();
             return {
               id: doc.id,
-              timestamp: data.createdAt.toDate().getTime(),
+              timestamp: timestamp,
               category: data.category,
               difficulty: data.difficulty,
               exchanges: data.exchanges || [],
