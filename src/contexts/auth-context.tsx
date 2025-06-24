@@ -60,7 +60,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push('/');
     } catch (error: any) {
       console.error("Login error:", error.message);
-      toast({ title: "Login Failed", description: error.code, variant: "destructive" });
+      let description = "An unknown error occurred. Please try again.";
+      if (typeof error.code === 'string') {
+        switch (error.code) {
+          case 'auth/configuration-not-found':
+          case 'auth/invalid-api-key':
+            description = "Firebase configuration is incorrect. Please check your .env file and Firebase project settings.";
+            break;
+          case 'auth/wrong-password':
+          case 'auth/user-not-found':
+          case 'auth/invalid-credential':
+            description = "Invalid email or password.";
+            break;
+          default:
+            description = error.code;
+        }
+      }
+      toast({ title: "Login Failed", description, variant: "destructive" });
       throw error;
     }
   };
@@ -77,7 +93,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any)
     {
       console.error("Signup error:", error.message);
-      toast({ title: "Sign Up Failed", description: error.code, variant: "destructive" });
+      let description = "An unknown error occurred. Please try again.";
+       if (typeof error.code === 'string') {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            description = "This email address is already in use.";
+            break;
+          case 'auth/weak-password':
+            description = "The password is too weak. Please use a stronger password.";
+            break;
+          case 'auth/configuration-not-found':
+          case 'auth/invalid-api-key':
+            description = "Firebase configuration is incorrect. Please check your .env file and Firebase project settings.";
+            break;
+          default:
+            description = error.code;
+        }
+      }
+      toast({ title: "Sign Up Failed", description, variant: "destructive" });
       throw error;
     }
   };

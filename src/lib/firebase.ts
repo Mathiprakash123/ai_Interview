@@ -16,7 +16,8 @@ let auth: Auth | null = null;
 let db: Firestore | null = null;
 
 // A check to see if the user has configured their Firebase project.
-export const isFirebaseConfigured = !!firebaseConfig.apiKey;
+export const isFirebaseConfigured =
+  !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'your-api-key';
 
 if (isFirebaseConfigured) {
   try {
