@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Bot, Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { isFirebaseConfigured } from '@/lib/firebase';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -49,6 +50,16 @@ export default function SignupPage() {
           <CardDescription>Start your AI-powered interview journey.</CardDescription>
         </CardHeader>
         <CardContent>
+          {!isFirebaseConfigured && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Firebase Not Configured</AlertTitle>
+              <AlertDescription>
+                Please add your Firebase credentials to the .env file to enable
+                sign up.
+              </AlertDescription>
+            </Alert>
+          )}
           {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
@@ -66,7 +77,7 @@ export default function SignupPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isFirebaseConfigured}
               />
             </div>
             <div className="space-y-2">
@@ -78,13 +89,13 @@ export default function SignupPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isFirebaseConfigured}
               />
             </div>
             <p className="text-xs text-muted-foreground">
               Your password must be at least 6 characters long.
             </p>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full" disabled={isSubmitting || !isFirebaseConfigured}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign Up
             </Button>

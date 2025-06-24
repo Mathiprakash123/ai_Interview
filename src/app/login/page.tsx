@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Bot, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { isFirebaseConfigured } from '@/lib/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -46,6 +47,16 @@ export default function LoginPage() {
           <CardDescription>Log in to continue your interview practice.</CardDescription>
         </CardHeader>
         <CardContent>
+          {!isFirebaseConfigured && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Firebase Not Configured</AlertTitle>
+              <AlertDescription>
+                Please add your Firebase credentials to the .env file to enable
+                login.
+              </AlertDescription>
+            </Alert>
+          )}
           {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
@@ -63,7 +74,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isFirebaseConfigured}
               />
             </div>
             <div className="space-y-2">
@@ -75,10 +86,10 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isFirebaseConfigured}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full" disabled={isSubmitting || !isFirebaseConfigured}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Log In
             </Button>
