@@ -11,7 +11,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import type { InterviewSession } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Trash2, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, writeBatch } from 'firebase/firestore';
@@ -94,7 +93,7 @@ export default function HistoryPage() {
       <div className="flex flex-col min-h-screen">
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <p>Loading...</p>
         </div>
       </div>
     );
@@ -106,7 +105,7 @@ export default function HistoryPage() {
       <div className="flex flex-col min-h-screen">
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <p>Redirecting...</p>
         </div>
       </div>
     );
@@ -119,15 +118,14 @@ export default function HistoryPage() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" asChild>
-              <Link href="/"><ArrowLeft/></Link>
+              <Link href="/">Back</Link>
             </Button>
             <h1 className="text-3xl font-bold font-headline">Interview History</h1>
           </div>
           
           {history.length > 0 && (
             <Button variant="destructive" onClick={clearHistory} disabled={isClearing}>
-              {isClearing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              Clear History
+              {isClearing ? 'Clearing...' : 'Clear History'}
             </Button>
           )}
         </div>
