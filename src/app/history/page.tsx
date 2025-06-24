@@ -117,7 +117,7 @@ export default function HistoryPage() {
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="outline" asChild>
               <Link href="/">Back</Link>
             </Button>
             <h1 className="text-3xl font-bold font-headline">Interview History</h1>
@@ -163,33 +163,44 @@ export default function HistoryPage() {
                   </AccordionTrigger>
                   <AccordionContent className="p-6 pt-0">
                     <Accordion type="single" collapsible className="w-full space-y-2">
-                      {(session.exchanges || []).map((exchange, index) => (
-                        <AccordionItem value={`exchange-${session.id}-${index}`} key={`exchange-${session.id}-${index}`} className="border-b-0">
-                          <Card className="bg-secondary/50">
-                            <AccordionTrigger className="p-4 hover:no-underline text-left">
-                              <p className="font-semibold">Q{index + 1}: {exchange.question.text}</p>
-                            </AccordionTrigger>
-                            <AccordionContent className="p-4 pt-0">
-                                <div className="space-y-6">
-                                  <div>
-                                    <h4 className="font-semibold mb-2 font-headline">Your Answer:</h4>
-                                    <blockquote className="text-muted-foreground p-4 bg-background rounded-md border-l-4 border-primary">{exchange.answer}</blockquote>
-                                  </div>
-                                  <Separator />
-                                  <div>
-                                    <h4 className="font-semibold mb-4 font-headline">AI Feedback:</h4>
-                                    <div className="space-y-4 text-muted-foreground">
-                                      <p><strong>Clarity:</strong> {exchange.feedback.clarity}</p>
-                                      <p><strong>Conciseness:</strong> {exchange.feedback.conciseness}</p>
-                                      <p><strong>Overall Quality:</strong> {exchange.feedback.overallQuality}</p>
-                                      <p><strong>Suggestions:</strong> {exchange.feedback.suggestions}</p>
+                      {(session.exchanges || []).map((exchange, index) => {
+                        // Handle backward compatibility for question format
+                        const questionText = typeof exchange.question === 'string'
+                          ? exchange.question
+                          : (exchange.question as any)?.text;
+
+                        return (
+                          <AccordionItem value={`exchange-${session.id}-${index}`} key={`exchange-${session.id}-${index}`} className="border-b-0">
+                            <Card className="bg-secondary/50">
+                              <AccordionTrigger className="p-4 hover:no-underline text-left">
+                                <p className="font-semibold">Q{index + 1}: {questionText || 'Question not available'}</p>
+                              </AccordionTrigger>
+                              <AccordionContent className="p-4 pt-0">
+                                  <div className="space-y-6">
+                                    <div>
+                                      <h4 className="font-semibold mb-2 font-headline">Your Answer:</h4>
+                                      <blockquote className="text-muted-foreground p-4 bg-background rounded-md border-l-4 border-primary">{exchange.answer}</blockquote>
                                     </div>
+                                    {exchange.feedback && (
+                                      <>
+                                        <Separator />
+                                        <div>
+                                          <h4 className="font-semibold mb-4 font-headline">AI Feedback:</h4>
+                                          <div className="space-y-4 text-muted-foreground">
+                                            <p><strong>Clarity:</strong> {exchange.feedback.clarity}</p>
+                                            <p><strong>Conciseness:</strong> {exchange.feedback.conciseness}</p>
+                                            <p><strong>Overall Quality:</strong> {exchange.feedback.overallQuality}</p>
+                                            <p><strong>Suggestions:</strong> {exchange.feedback.suggestions}</p>
+                                          </div>
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
-                                </div>
-                            </AccordionContent>
-                          </Card>
-                        </AccordionItem>
-                      ))}
+                              </AccordionContent>
+                            </Card>
+                          </AccordionItem>
+                        );
+                      })}
                     </Accordion>
                   </AccordionContent>
                 </Card>
